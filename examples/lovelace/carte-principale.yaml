@@ -1,14 +1,135 @@
 # Carte principale Cabanga - style Nexus HUD
-# Prérequis HACS frontend : custom:button-card
+# Prérequis HACS frontend : custom:button-card, card-mod, browser_mod (optionnel, pour la popup)
 # Affiche : journal de classe du jour, devoirs à faire, 5 dernières évaluations
-# Remplace "haley" dans les 3 entity_id ci-dessous par l'enfant concerné,
-# et "HALEY" dans les libellés d'affichage.
+# Double-clic sur la carte : ouvre une popup (via browser_mod) avec la liste
+# complète des devoirs non faits (pas seulement les 5 affichés sur la carte).
+# Sans browser_mod, le double-clic ne fait simplement rien, le reste de la
+# carte fonctionne normalement.
+#
+# Le bloc card_mod ciblant #container corrige un comportement par défaut de
+# button-card qui centre le contenu du custom_field dans sa cellule de grille
+# (`text-align`/`align-items` internes non exposés via la clé styles.grid) —
+# sans ce correctif le contenu apparaît centré au lieu d'aligné à gauche.
+# Les icônes du header/section-title utilisent des émojis plutôt que ha-icon,
+# car ha-icon a un comportement de dimensionnement (box invisible surdimensionnée)
+# qui casse l'alignement icône+texte dans ce contexte spécifique.
+# Le texte des devoirs/cours (.row .label) utilise word-wrap/overflow-wrap pour
+# passer à la ligne au lieu de déborder hors de la carte sur les textes longs.
+#
+# Remplace "haley" dans les entity_id ci-dessous par l'enfant concerné,
+# et "HALEY" dans les libellés d'affichage (y compris dans le titre de la popup).
+# grid_options: columns: full → fait en sorte que la carte remplisse toute
+# la largeur disponible dans une vue de type "Sections".
 type: custom:button-card
+card_mod:
+  style: |
+    #container {
+      text-align: left !important;
+      align-items: stretch !important;
+      justify-items: stretch !important;
+    }
+grid_options:
+  columns: full
+  rows: auto
 show_name: false
 show_icon: false
 show_state: false
 tap_action:
   action: none
+double_tap_action:
+  action: fire-dom-event
+  browser_mod:
+    service: popup
+    data:
+      title: Devoirs à faire — Haley
+      size: wide
+      content:
+        type: markdown
+        content: |
+          {% set devoirs = state_attr('sensor.cabanga_haley_devoirs_a_faire_haley', 'devoirs') or [] %}
+          **📔 DEVOIRS À FAIRE — HALEY**
+
+          *{{ devoirs | length }} devoir{{ 's' if devoirs | length > 1 else '' }} non fait{{ 's' if devoirs | length > 1 else '' }}*
+
+          | | Date | Matière | Devoir |
+          |---|---|---|---|
+          {% for d in devoirs %}
+          {% set jour = d.date.split('-') if d.date else ['','',''] %}
+          {% set retard = '🔴' if d.date and d.date < now().strftime('%Y-%m-%d') else '🟢' %}
+          | {{ retard }} | {{ jour[2] }}/{{ jour[1] }} | **{{ d.matiere }}** | {{ d.consigne }} |
+          {% else %}
+          | | | Rien à faire pour l'instant | |
+          {% endfor %}
+        card_mod:
+          style: |
+            ha-card {
+              background: linear-gradient(180deg,rgba(4,16,40,0.97),rgba(4,15,34,0.98)) !important;
+              border: 1px solid rgba(70,190,255,0.18) !important;
+              border-radius: 12px !important;
+              box-shadow: 0 0 14px rgba(79,211,255,0.08) !important;
+              max-height: 70vh;
+              overflow-y: auto;
+              overflow-x: hidden;
+              padding: 14px 16px 16px !important;
+              scrollbar-width: thin;
+              scrollbar-color: rgba(79,211,255,0.3) transparent;
+            }
+            ha-card::-webkit-scrollbar { width: 4px; }
+            ha-card::-webkit-scrollbar-track { background: transparent; }
+            ha-card::-webkit-scrollbar-thumb {
+              background: rgba(79,211,255,0.3);
+              border-radius: 2px;
+            }
+            ha-markdown, ha-markdown-element {
+              font-family: 'Share Tech Mono', monospace !important;
+              color: #eaf6ff !important;
+            }
+            ha-markdown p:first-of-type, ha-markdown-element p:first-of-type {
+              font-family: 'Orbitron', sans-serif !important;
+              font-size: 13px !important;
+              letter-spacing: 1px !important;
+              color: #4fd3ff !important;
+              border-bottom: 1px solid rgba(70,190,255,0.18) !important;
+              padding-bottom: 8px !important;
+              margin-bottom: 4px !important;
+            }
+            ha-markdown em, ha-markdown-element em {
+              font-size: 10.5px !important;
+              color: rgba(234,246,255,0.4) !important;
+              font-style: italic !important;
+            }
+            ha-markdown table, ha-markdown-element table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              margin-top: 8px !important;
+            }
+            ha-markdown thead, ha-markdown-element thead {
+              display: none !important;
+            }
+            ha-markdown td, ha-markdown-element td {
+              font-size: 12px !important;
+              padding: 6px 4px !important;
+              border-bottom: 1px solid rgba(70,190,255,0.08) !important;
+              vertical-align: top !important;
+            }
+            ha-markdown td:nth-child(1), ha-markdown-element td:nth-child(1) {
+              font-size: 10px !important;
+              width: 16px;
+            }
+            ha-markdown td:nth-child(2), ha-markdown-element td:nth-child(2) {
+              color: #4fd3ff !important;
+              white-space: nowrap;
+              width: 44px;
+            }
+            ha-markdown td:nth-child(3), ha-markdown-element td:nth-child(3) {
+              font-family: 'Orbitron', sans-serif !important;
+              font-weight: 700 !important;
+              white-space: nowrap;
+              width: 90px;
+            }
+            ha-markdown td:nth-child(4), ha-markdown-element td:nth-child(4) {
+              color: #eaf6ff !important;
+            }
 custom_fields:
   card_content: |
     [[[
@@ -72,10 +193,14 @@ custom_fields:
             font-family: 'Share Tech Mono', monospace;
             color: #eaf6ff;
             padding: 14px 16px 16px;
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
           }
           .nexus-cabanga .header {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             font-family: 'Orbitron', sans-serif;
             font-size: 13px;
@@ -89,11 +214,22 @@ custom_fields:
             --mdc-icon-size: 16px;
             color: #ffe082;
           }
+          .nexus-cabanga .icon-emoji {
+            font-size: 16px;
+            line-height: 1;
+            flex-shrink: 0;
+          }
+          .nexus-cabanga .icon-emoji-sm {
+            font-size: 13px;
+            line-height: 1;
+            flex-shrink: 0;
+          }
           .nexus-cabanga .section { margin-bottom: 12px; }
           .nexus-cabanga .section:last-child { margin-bottom: 0px; }
           .nexus-cabanga .section-title {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             font-size: 11px;
             color: rgba(234,246,255,0.55);
@@ -107,6 +243,7 @@ custom_fields:
           }
           .nexus-cabanga .row {
             display: flex;
+            align-items: flex-start;
             gap: 10px;
             font-size: 12.5px;
             padding: 3px 0;
@@ -119,7 +256,14 @@ custom_fields:
             min-width: 40px;
             flex-shrink: 0;
           }
-          .nexus-cabanga .row .label { color: #eaf6ff; }
+          .nexus-cabanga .row .label {
+            color: #eaf6ff;
+            flex: 1;
+            min-width: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+          }
           .nexus-cabanga .empty {
             font-size: 12px;
             color: rgba(234,246,255,0.35);
@@ -173,22 +317,22 @@ custom_fields:
         </style>
         <div class="nexus-cabanga">
           <div class="header">
-            <ha-icon icon="mdi:school-outline"></ha-icon>
+            <span class="icon-emoji">🎓</span>
             <span>SUIVI SCOLAIRE — HALEY</span>
           </div>
 
           <div class="section">
-            <div class="section-title"><ha-icon icon="mdi:notebook-outline"></ha-icon> Journal de classe</div>
+            <div class="section-title"><span class="icon-emoji-sm">📔</span> Journal de classe</div>
             ${coursHtml}
           </div>
 
           <div class="section">
-            <div class="section-title"><ha-icon icon="mdi:notebook-check-outline"></ha-icon> Devoirs à faire${listeDevoirs.length ? ` (${listeDevoirs.length})` : ''}</div>
+            <div class="section-title"><span class="icon-emoji-sm">✅</span> Devoirs à faire${listeDevoirs.length ? ` (${listeDevoirs.length})` : ''}</div>
             ${devoirsHtml}
           </div>
 
           <div class="section">
-            <div class="section-title"><ha-icon icon="mdi:school-outline"></ha-icon> 5 dernières évaluations</div>
+            <div class="section-title"><span class="icon-emoji-sm">🎓</span> 5 dernières évaluations</div>
             ${evalHtml}
           </div>
         </div>
@@ -201,7 +345,14 @@ styles:
     - border-radius: 12px
     - box-shadow: 0 0 14px rgba(79,211,255,0.08)
     - padding: 0px
+  grid:
+    - grid-template-areas: '"card_content"'
+    - grid-template-columns: 1fr
+    - grid-template-rows: auto
+    - justify-items: stretch
+    - align-items: stretch
   custom_fields:
     card_content:
       - width: 100%
       - padding: 0px
+      - justify-self: stretch

@@ -1,16 +1,132 @@
 # Carte moyennes par matière - style Nexus HUD
-# Prérequis HACS frontend : custom:button-card
+# Prérequis HACS frontend : custom:button-card, card-mod, browser_mod (optionnel, pour la popup)
 # Regroupe les évaluations non-formatives par matière depuis le début de
 # l'année scolaire, triées par moyenne croissante (matières les plus
 # faibles en premier).
+# Double-clic sur la carte : ouvre une popup (via browser_mod) avec
+# l'historique complet des évaluations de l'année, toutes matières
+# confondues, triées par date.
+# Voir carte-principale.yaml pour l'explication du bloc card_mod (#container)
+# et de l'usage d'émojis plutôt que ha-icon dans le header.
 # Remplace "haley" dans l'entity_id ci-dessous par l'enfant concerné,
-# et "HALEY" dans le libellé d'affichage.
+# et "HALEY" dans le libellé d'affichage (y compris dans le titre de la popup).
 type: custom:button-card
+card_mod:
+  style: |
+    #container {
+      text-align: left !important;
+      align-items: stretch !important;
+      justify-items: stretch !important;
+    }
+grid_options:
+  columns: full
+  rows: auto
 show_name: false
 show_icon: false
 show_state: false
 tap_action:
   action: none
+double_tap_action:
+  action: fire-dom-event
+  browser_mod:
+    service: popup
+    data:
+      title: Historique évaluations — Haley
+      size: wide
+      content:
+        type: markdown
+        content: |
+          {% set ev = state_attr('sensor.cabanga_haley_derniere_evaluation_haley', 'toutes') or [] %}
+          {% set notees = ev | rejectattr('formative') | list %}
+          {% set total_score = notees | map(attribute='score') | select('number') | sum %}
+          {% set total_max = notees | map(attribute='score_max') | select('number') | sum %}
+          {% set moyenne = (total_score / total_max * 100) if total_max else None %}
+          **📈 HISTORIQUE ÉVALUATIONS — HALEY**{% if moyenne is not none %} — Moyenne : **{{ '%.1f' | format(moyenne) }}%**{% endif %}
+
+          *{{ ev | length }} évaluation{{ 's' if ev | length > 1 else '' }} cette année scolaire*
+
+          | | Date | Note | Matière | Sujet |
+          |---|---|---|---|---|
+          {% for e in ev %}
+          {% set pct = (e.score / e.score_max * 100) if e.score is number and e.score_max else None %}
+          {% set dot = '🟢' if pct is not none and pct >= 65 else ('🟠' if pct is not none and pct >= 50 else ('🔴' if pct is not none else '⚪')) %}
+          {% set d = e.date.split('-') if e.date else ['','',''] %}
+          | {{ dot }} | {{ d[2] }}/{{ d[1] }} | {{ '%g' | format(e.score) if e.score is number else '–' }}/{{ '%g' | format(e.score_max) if e.score_max is number else '–' }} | **{{ e.matiere }}**{{ ' _(form.)_' if e.formative else '' }} | {{ e.titre }} |
+          {% endfor %}
+        card_mod:
+          style: |
+            ha-card {
+              background: linear-gradient(180deg,rgba(4,16,40,0.97),rgba(4,15,34,0.98)) !important;
+              border: 1px solid rgba(70,190,255,0.18) !important;
+              border-radius: 12px !important;
+              box-shadow: 0 0 14px rgba(79,211,255,0.08) !important;
+              max-height: 70vh;
+              overflow-y: auto;
+              overflow-x: hidden;
+              padding: 14px 16px 16px !important;
+              scrollbar-width: thin;
+              scrollbar-color: rgba(79,211,255,0.3) transparent;
+            }
+            ha-card::-webkit-scrollbar { width: 4px; }
+            ha-card::-webkit-scrollbar-track { background: transparent; }
+            ha-card::-webkit-scrollbar-thumb {
+              background: rgba(79,211,255,0.3);
+              border-radius: 2px;
+            }
+            ha-markdown, ha-markdown-element {
+              font-family: 'Share Tech Mono', monospace !important;
+              color: #eaf6ff !important;
+            }
+            ha-markdown p:first-of-type, ha-markdown-element p:first-of-type {
+              font-family: 'Orbitron', sans-serif !important;
+              font-size: 13px !important;
+              letter-spacing: 1px !important;
+              color: #4fd3ff !important;
+              border-bottom: 1px solid rgba(70,190,255,0.18) !important;
+              padding-bottom: 8px !important;
+              margin-bottom: 4px !important;
+            }
+            ha-markdown em, ha-markdown-element em {
+              font-size: 10.5px !important;
+              color: rgba(234,246,255,0.4) !important;
+              font-style: italic !important;
+            }
+            ha-markdown table, ha-markdown-element table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              margin-top: 8px !important;
+            }
+            ha-markdown thead, ha-markdown-element thead {
+              display: none !important;
+            }
+            ha-markdown td, ha-markdown-element td {
+              font-size: 11.5px !important;
+              padding: 5px 4px !important;
+              border-bottom: 1px solid rgba(70,190,255,0.08) !important;
+              vertical-align: top !important;
+            }
+            ha-markdown td:nth-child(1), ha-markdown-element td:nth-child(1) {
+              font-size: 10px !important;
+              width: 16px;
+            }
+            ha-markdown td:nth-child(2), ha-markdown-element td:nth-child(2) {
+              color: #4fd3ff !important;
+              white-space: nowrap;
+              width: 36px;
+            }
+            ha-markdown td:nth-child(3), ha-markdown-element td:nth-child(3) {
+              font-family: 'Orbitron', sans-serif !important;
+              font-weight: 700 !important;
+              white-space: nowrap;
+              width: 60px;
+            }
+            ha-markdown td:nth-child(4), ha-markdown-element td:nth-child(4) {
+              color: #eaf6ff !important;
+            }
+            ha-markdown td:nth-child(5), ha-markdown-element td:nth-child(5) {
+              color: rgba(234,246,255,0.4) !important;
+              font-size: 10.5px !important;
+            }
 custom_fields:
   card_content: |
     [[[
@@ -72,6 +188,7 @@ custom_fields:
           .nexus-cabanga .header {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             font-family: 'Orbitron', sans-serif;
             font-size: 13px;
@@ -80,6 +197,11 @@ custom_fields:
             border-bottom: 1px solid rgba(70,190,255,0.18);
             padding-bottom: 8px;
             margin-bottom: 10px;
+          }
+          .nexus-cabanga .icon-emoji {
+            font-size: 16px;
+            line-height: 1;
+            flex-shrink: 0;
           }
           .nexus-cabanga .header ha-icon {
             --mdc-icon-size: 16px;
@@ -127,7 +249,7 @@ custom_fields:
         </style>
         <div class="nexus-cabanga">
           <div class="header">
-            <ha-icon icon="mdi:chart-bar"></ha-icon>
+            <span class="icon-emoji">📊</span>
             <span>MOYENNES PAR MATIÈRE — HALEY</span>
           </div>
           ${rowsHtml}

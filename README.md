@@ -35,6 +35,28 @@ la configuration initiale (et le refaire uniquement si l'intégration reste
 
 ### Récupérer le refresh_token
 
+**Méthode simple (recommandée) — script Tampermonkey**
+
+Un petit script capture automatiquement le token à chaque connexion, sans
+avoir à toucher aux DevTools :
+
+1. Installe l'extension [Tampermonkey](https://www.tampermonkey.net/) sur ton navigateur
+2. Crée un nouveau script (icône Tampermonkey → "Create a new script")
+3. Colle le contenu de [`tools/cabanga-token-capture.user.js`](tools/cabanga-token-capture.user.js), sauvegarde
+4. Va sur `https://app.cabanga.be/app` et connecte-toi normalement
+5. Une popup s'affiche automatiquement avec le refresh_token, prêt à copier
+
+Le script intercepte uniquement le trafic de ton propre navigateur sur ton
+propre compte — rien n'est envoyé ailleurs. Comme il tourne en continu tant
+qu'il est activé, la popup peut réapparaître de temps en temps (l'app
+rafraîchit sa session en arrière-plan) ; désactive-le depuis l'icône
+Tampermonkey si ça devient gênant, et réactive-le seulement quand tu as
+besoin d'un nouveau token.
+
+**Méthode manuelle — DevTools**
+
+Si tu préfères ne pas installer d'extension :
+
 1. Ouvre `https://app.cabanga.be/app` dans Chrome/Firefox
 2. Ouvre les DevTools (F12) → onglet **Network** → coche "Preserve log"
 3. Filtre sur **All** (pas juste Fetch/XHR) et tape `token` dans la barre de recherche
@@ -86,12 +108,13 @@ Copie le dossier `custom_components/cabanga` dans le dossier
 - Si le refresh_token expire complètement (HA éteint plus de 7 jours
   d'affilée), un flux de ré-authentification natif HA se déclenche
   automatiquement (notification + bouton "Ré-authentifier" sur
-  l'intégration) — il suffit de coller un nouveau refresh_token, la config
-  des élèves est conservée
+  l'intégration) — il suffit de coller un nouveau refresh_token (voir
+  [méthode Tampermonkey](#récupérer-le-refresh_token) ci-dessus pour
+  l'obtenir rapidement), la config des élèves est conservée
 
 ## Cartes Lovelace (style Nexus HUD)
 
-Quatre cartes prêtes à l'emploi sont fournies dans
+Cinq cartes prêtes à l'emploi sont fournies dans
 [`examples/lovelace/`](examples/lovelace/), dans le style visuel "Nexus HUD"
 (fond navy, bordures/glow cyan, police Orbitron/Share Tech Mono). Toutes
 incluent `grid_options: columns: full`, pensé pour les vues Lovelace de
@@ -104,12 +127,12 @@ type **Sections**.
 Journal de classe du jour, devoirs à faire (non cochés comme faits), et les
 5 dernières évaluations avec badge coloré (🟢 ≥65%, 🟠 ≥50%, 🔴 en dessous).
 Un double-clic sur la carte ouvre une popup (via
-[`browser_mod`](https://github.com/thomasloven/hass-browser_mod)) avec
-l'historique complet des évaluations de l'année — pratique pour garder le
-dashboard compact tout en gardant l'historique à portée de clic.
+[`browser_mod`](https://github.com/thomasloven/hass-browser_mod)) avec la
+liste complète des devoirs non faits — pratique pour voir tout ce qui reste
+à faire sans limiter l'affichage aux 5 devoirs visibles sur la carte.
 
 → [`examples/lovelace/carte-principale.yaml`](examples/lovelace/carte-principale.yaml)
-— nécessite `custom:button-card`, `browser_mod` (optionnel, pour la popup)
+— nécessite `custom:button-card`, `card-mod`, `browser_mod` (optionnel, pour la popup)
 
 ### Carte historique — toutes les évaluations de l'année
 
@@ -126,10 +149,12 @@ avec moyenne pondérée globale en en-tête.
 ![Carte moyennes](docs/screenshots/carte-moyennes.png)
 
 Moyenne pondérée par matière depuis le début de l'année, triée par ordre
-croissant (matières les plus faibles en premier).
+croissant (matières les plus faibles en premier). Double-clic sur la carte :
+ouvre une popup (via `browser_mod`) avec l'historique complet des
+évaluations de l'année, toutes matières confondues, triées par date.
 
 → [`examples/lovelace/carte-moyennes.yaml`](examples/lovelace/carte-moyennes.yaml)
-— nécessite `custom:button-card`, `card-mod`
+— nécessite `custom:button-card`, `card-mod`, `browser_mod` (optionnel, pour la popup)
 
 ### Carte retours anticipés
 
@@ -165,11 +190,11 @@ popup.
 ## Structure technique
 
 - `api.py` — client HTTP (Keycloak token refresh + endpoints Cabanga :
-  diary, evaluations, absences, early departures)
+  diary, evaluations, absences, early departures, agenda)
 - `coordinator.py` — polling centralisé (toutes les 3h par défaut), persiste
   le refresh_token à jour dans le config entry après chaque rotation, lève
   `ConfigEntryAuthFailed` si le token expire pour déclencher le flux de
   ré-authentification natif HA
 - `config_flow.py` — formulaire de configuration + validation du token +
   flux de ré-authentification (`async_step_reauth`)
-- `sensor.py` — les 5 entités par enfant
+- `sensor.py` — les six entités par enfant
