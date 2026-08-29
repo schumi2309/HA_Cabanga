@@ -25,7 +25,6 @@
     }
   }
 
-  // --- Interception via fetch ---
   const originalFetch = window.fetch;
   window.fetch = function (...args) {
     return originalFetch.apply(this, args).then((response) => {
@@ -42,7 +41,6 @@
     });
   };
 
-  // --- Interception via XMLHttpRequest ---
   const OriginalXHR = window.XMLHttpRequest;
   function PatchedXHR() {
     const xhr = new OriginalXHR();
