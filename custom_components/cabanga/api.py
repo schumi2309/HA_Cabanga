@@ -122,6 +122,27 @@ class CabangaApiClient:
         params = {"year": year}
         return await self._authed_get(url, params)
 
+    async def async_get_remarks(
+        self, school_id: str, student_id: str, year: int
+    ) -> list[dict]:
+        """Remarques (notes dans le journal de classe) pour un élève."""
+        url = f"{API_BASE_URL}/schools/{school_id}/students/{student_id}/remarks"
+        params = {"year": year}
+        return await self._authed_get(url, params)
+
+    async def async_get_late_arrivals(
+        self, school_id: str, student_id: str, year: int
+    ) -> list[dict]:
+        """Arrivées tardives pour un élève.
+
+        BÊTA : l'endpoint (`lateArrivals`) est déduit par analogie avec
+        `earlyDepartures` et n'a pas encore été confirmé avec des données
+        réelles. Si l'appel échoue, l'appelant doit l'ignorer.
+        """
+        url = f"{API_BASE_URL}/schools/{school_id}/students/{student_id}/lateArrivals"
+        params = {"year": year}
+        return await self._authed_get(url, params)
+
     async def async_get_agenda(self, school_id: str) -> list[dict]:
         """Agenda/calendrier scolaire officiel (au niveau école, pas par élève).
 

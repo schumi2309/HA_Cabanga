@@ -10,13 +10,15 @@ avec Scolares/Cabanga. Peut casser si leur API change.
 
 ## Ce que ça fait
 
-Pour chaque enfant configuré, six capteurs sont créés :
+Pour chaque enfant configuré, huit capteurs sont créés :
 
 - **Journal de classe {enfant}** — nombre de cours aujourd'hui, avec heure/matière/sujet en attribut
 - **Devoirs à faire {enfant}** — nombre de devoirs non cochés comme faits, avec détail en attribut
 - **Dernière évaluation {enfant}** — dernière note reçue (`score`), avec matière/titre/date, les 5 dernières évaluations, et l'historique complet de l'année en attribut
 - **Retours anticipés {enfant}** — nombre de sorties avant l'heure sur l'année en cours, avec date/heure/motif/classe/autorisation en attribut
 - **Agenda {enfant}** — nombre d'événements à venir dans le calendrier scolaire officiel (rentrées, bulletins, conseils de classe, réunions, congés pédagogiques...), avec le tout prochain événement et la liste complète de l'année en attribut
+- **Remarques {enfant}** — nombre de remarques (notes dans le journal de classe) sur l'année en cours, avec date/heure/texte/type/auteur/classe et « vue par les parents » dans l'attribut `remarques`
+- **Arrivées tardives {enfant}** — ⚠️ **beta** : endpoint (`lateArrivals`) déduit par analogie avec les retours anticipés, jamais confirmé avec des données réelles. Capteur générique : nombre d'entrées comme état, liste brute dans l'attribut `arrivees_brutes`. Si tu as un exemple de JSON réel, une issue est bienvenue.
 - **Absences {enfant}** — ⚠️ **beta** : structure JSON jamais confirmée avec des données réelles (aucun élève testé n'avait d'absence enregistrée à ce jour). Le capteur reste générique : nombre brut d'entrées comme état, liste brute telle que renvoyée par l'API dans l'attribut `absences_brutes`. Si tu obtiens une vraie donnée, une issue/PR avec le JSON exact est bienvenue pour finaliser ce capteur comme les autres.
 
 ## Pourquoi il faut un refresh_token manuel
@@ -178,6 +180,15 @@ popup.
 → [`examples/lovelace/carte-agenda.yaml`](examples/lovelace/carte-agenda.yaml)
 — nécessite `custom:button-card`, `card-mod`, `browser_mod` (optionnel, pour la popup)
 
+### Carte remarques
+
+Les 5 dernières remarques du journal de classe (rouge = disciplinaire,
+orange = autre), avec auteur, classe et statut « vue par les parents ».
+Double-clic pour la liste complète de l'année en popup.
+
+→ [`examples/lovelace/carte-remarques.yaml`](examples/lovelace/carte-remarques.yaml)
+— nécessite `custom:button-card`, `card-mod`, `browser_mod` (optionnel, pour la popup)
+
 ### Installation d'une carte
 
 1. Ouvre le fichier `.yaml` correspondant, copie tout le contenu
@@ -190,11 +201,11 @@ popup.
 ## Structure technique
 
 - `api.py` — client HTTP (Keycloak token refresh + endpoints Cabanga :
-  diary, evaluations, absences, early departures, agenda)
+  diary, evaluations, absences, early departures, remarks, late arrivals, agenda)
 - `coordinator.py` — polling centralisé (toutes les 3h par défaut), persiste
   le refresh_token à jour dans le config entry après chaque rotation, lève
   `ConfigEntryAuthFailed` si le token expire pour déclencher le flux de
   ré-authentification natif HA
 - `config_flow.py` — formulaire de configuration + validation du token +
   flux de ré-authentification (`async_step_reauth`)
-- `sensor.py` — les six entités par enfant
+- `sensor.py` — les huit entités par enfant

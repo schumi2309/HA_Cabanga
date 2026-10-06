@@ -1,4 +1,4 @@
-"""Capteurs Cabanga : journal de classe, devoirs à faire, dernière évaluation, absences, retours anticipés, agenda."""
+"""Capteurs Cabanga : journal de classe, devoirs à faire, dernière évaluation, absences, retours anticipés, agenda, remarques, arrivées tardives."""
 from __future__ import annotations
 
 from datetime import date
@@ -25,6 +25,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         entities.append(CabangaAbsenceSensor(coordinator, entry, student_id))
         entities.append(CabangaEarlyDepartureSensor(coordinator, entry, student_id))
         entities.append(CabangaAgendaSensor(coordinator, entry, student_id))
+        entities.append(CabangaRemarkSensor(coordinator, entry, student_id))
+        entities.append(CabangaLateArrivalSensor(coordinator, entry, student_id))
 
     async_add_entities(entities)
 
@@ -331,3 +333,78 @@ class CabangaAgendaSensor(_CabangaBaseSensor):
                 for e in self._all_events_sorted
             ],
         }
+
+
+class CabangaRemarkSensor(_CabangaBaseSensor):
+    """Remarques (notes dans le journal de classe) sur l'année scolaire en cours."""
+
+    _attr_icon = "mdi:message-alert-outline"
+
+    def __init__(self, coordinator, entry, student_id) -> None:
+        super().__init__(coordinator, entry, student_id)
+        self._attr_unique_id = f"{DOMAIN}_{student_id}_remarques"
+        name = self._student_name_init(coordinator, student_id)
+        self._attr_name = f"Remarques {name}"
+
+    @staticmethod
+    def _student_name_init(coordinator, student_id) -> str:
+        return coordinator.data.get(student_id, {}).get("name", student_id) if coordinator.data else student_id
+
+    @property
+    def _sorted_remarks(self) -> list[dict]:
+        remarks = self._student_data.get("remarks", [])
+        return sorted(
+            remarks,
+            key=lambda r: f"{r.get('date') or ''} {r.get('hour') or ''}",
+            reverse=True,
+        )
+
+    @property
+    def native_value(self) -> int:
+        return len(self._sorted_remarks)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "remarques": [
+                {
+                    "date": r.get("date"),
+                    "heure": r.get("hour"),
+                    "texte": r.get("text"),
+                    "type": r.get("type"),
+                    "auteur": f"{r.get('authorFirstName', '')} {r.get('authorLastName', '')}".strip(),
+                    "classe": r.get("className"),
+                    "vue_par_parents": bool(
+                        r.get("viewedByFirstParent") or r.get("viewedBySecondParent")
+                    ),
+                }
+                for r in self._sorted_remarks
+            ]
+        }
+
+
+class CabangaLateArrivalSensor(_CabangaBaseSensor):
+    """Arrivées tardives — BÊTA : structure JSON non confirmée (aucune donnée
+    réelle observée). Nombre d'entrées comme état, liste brute en attribut ;
+    sera affiné dès qu'un exemple réel sera disponible.
+    """
+
+    _attr_icon = "mdi:clock-alert-outline"
+
+    def __init__(self, coordinator, entry, student_id) -> None:
+        super().__init__(coordinator, entry, student_id)
+        self._attr_unique_id = f"{DOMAIN}_{student_id}_arrivees_tardives"
+        name = self._student_name_init(coordinator, student_id)
+        self._attr_name = f"Arrivées tardives {name}"
+
+    @staticmethod
+    def _student_name_init(coordinator, student_id) -> str:
+        return coordinator.data.get(student_id, {}).get("name", student_id) if coordinator.data else student_id
+
+    @property
+    def native_value(self) -> int:
+        return len(self._student_data.get("late_arrivals", []))
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"arrivees_brutes": self._student_data.get("late_arrivals", [])}

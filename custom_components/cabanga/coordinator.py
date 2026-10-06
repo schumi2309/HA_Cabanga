@@ -76,6 +76,19 @@ class CabangaCoordinator(DataUpdateCoordinator):
                 early_departures = await self.client.async_get_early_departures(
                     school_id, student_id, _current_school_year(today)
                 )
+                remarks = await self.client.async_get_remarks(
+                    school_id, student_id, _current_school_year(today)
+                )
+                try:
+                    late_arrivals = await self.client.async_get_late_arrivals(
+                        school_id, student_id, _current_school_year(today)
+                    )
+                except CabangaAuthError:
+                    raise
+                except CabangaApiError as err:
+                    # Endpoint bêta non confirmé : ne doit pas casser le reste.
+                    _LOGGER.debug("Arrivées tardives indisponibles : %s", err)
+                    late_arrivals = []
                 agenda = await self.client.async_get_agenda(school_id)
                 result[student_id] = {
                     "name": student["name"],
@@ -84,6 +97,8 @@ class CabangaCoordinator(DataUpdateCoordinator):
                     "evaluations": evaluations,
                     "absences": absences,
                     "early_departures": early_departures,
+                    "remarks": remarks,
+                    "late_arrivals": late_arrivals,
                     "agenda": agenda,
                 }
         except CabangaAuthError as err:

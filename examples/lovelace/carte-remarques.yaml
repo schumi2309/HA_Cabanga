@@ -1,0 +1,166 @@
+type: custom:button-card
+card_mod:
+  style: |
+    #container {
+      text-align: left !important;
+      align-items: stretch !important;
+      justify-items: stretch !important;
+    }
+grid_options:
+  columns: full
+  rows: auto
+show_name: false
+show_icon: false
+show_state: false
+tap_action:
+  action: none
+double_tap_action:
+  action: fire-dom-event
+  browser_mod:
+    service: browser_mod.popup
+    data:
+      title: "Remarques — Prénom"
+      size: wide
+      content:
+        type: markdown
+        content: |
+          {% set r = state_attr('sensor.cabanga_prenom_remarques_prenom', 'remarques') or [] %}
+          *{{ r | length }} remarque{{ 's' if r | length > 1 else '' }} cette année scolaire*
+
+          | | Date | Remarque |
+          |---|---|---|
+          {% for x in r %}
+          {% set ico = '🔴' if x.type == 'DISCIPLINARY' else '🟡' %}
+          {% set d = x.date.split('-') %}
+          | {{ ico }} | {{ d[2] }}/{{ d[1] }}/{{ d[0][2:] }} {{ x.heure or '' }} | **{{ x.texte }}**<br>{{ x.auteur }} · {{ x.classe }}{{ ' · 👁️ vue' if x.vue_par_parents else ' · ⚠️ non vue' }} |
+          {% endfor %}
+        card_mod:
+          style: |
+            ha-card {
+              background: linear-gradient(180deg,rgba(4,16,40,0.97),rgba(4,15,34,0.98)) !important;
+              border: 1px solid rgba(70,190,255,0.18) !important;
+              font-family: 'Share Tech Mono', monospace !important;
+              color: #eaf6ff !important;
+              max-height: 70vh;
+              overflow-y: auto;
+              padding: 8px 12px !important;
+            }
+            ha-markdown table { width: 100% !important; border-collapse: collapse !important; }
+            ha-markdown thead { display: none !important; }
+            ha-markdown td { font-size: 12px !important; padding: 6px 4px !important; border-bottom: 1px solid rgba(70,190,255,0.08) !important; vertical-align: top !important; word-wrap: break-word; }
+            ha-markdown em { font-size: 10.5px !important; color: rgba(234,246,255,0.4) !important; }
+custom_fields:
+  card_content: |
+    [[[
+      const sensorEntity = 'sensor.cabanga_prenom_remarques_prenom';
+      const s = states[sensorEntity];
+      const all = s?.attributes?.remarques || [];
+      const remarques = all.slice(0, 5);
+
+      const rowsHtml = remarques.length
+        ? remarques.map(r => {
+            const [y, m, d] = (r.date || '').split('-');
+            const grave = r.type === 'DISCIPLINARY';
+            const col = grave ? '#ff3b5c' : '#ff9030';
+            return `
+              <div class="rem-row">
+                <div class="rem-date" style="color:${col};border-color:${col}">${d && m ? d + '/' + m : ''}<span class="rem-year">/${y ? y.slice(2) : ''}</span></div>
+                <div class="rem-info">
+                  <div class="rem-text">${r.texte || ''}</div>
+                  <div class="rem-meta">${r.heure || ''} · ${r.auteur || ''}${r.classe ? ' · ' + r.classe : ''} · ${r.vue_par_parents ? '👁️ vue' : '⚠️ non vue'}</div>
+                </div>
+              </div>`;
+          }).join('')
+        : `<div class="empty">Aucune remarque cette année 👍</div>`;
+
+      return `
+        <style>
+          .nexus-cabanga {
+            font-family: 'Share Tech Mono', monospace;
+            color: #eaf6ff;
+            padding: 14px 16px 16px;
+          }
+          .nexus-cabanga .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px;
+            letter-spacing: 1px;
+            color: #4fd3ff;
+            border-bottom: 1px solid rgba(70,190,255,0.18);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+          }
+          .nexus-cabanga .icon-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; }
+          .nexus-cabanga .rem-row {
+            display: grid;
+            grid-template-columns: 56px 1fr;
+            align-items: center;
+            column-gap: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(70,190,255,0.08);
+          }
+          .nexus-cabanga .rem-row:last-child { border-bottom: none; }
+          .nexus-cabanga .rem-date {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid;
+            border-radius: 6px;
+            padding: 3px 0;
+            text-align: center;
+          }
+          .nexus-cabanga .rem-year { font-size: 9px; opacity: 0.6; font-weight: 400; }
+          .nexus-cabanga .rem-info { min-width: 0; }
+          .nexus-cabanga .rem-text {
+            font-size: 12.5px;
+            color: #eaf6ff;
+            white-space: normal;
+            word-wrap: break-word;
+          }
+          .nexus-cabanga .rem-meta {
+            font-size: 10.5px;
+            color: rgba(234,246,255,0.4);
+            margin-top: 2px;
+            white-space: normal;
+          }
+          .nexus-cabanga .more {
+            font-size: 10.5px;
+            color: rgba(234,246,255,0.4);
+            text-align: center;
+            padding-top: 8px;
+          }
+          .nexus-cabanga .empty {
+            font-size: 12px;
+            color: rgba(234,246,255,0.35);
+            font-style: italic;
+            padding: 4px 0;
+          }
+        </style>
+        <div class="nexus-cabanga">
+          <div class="header">
+            <span class="icon-emoji">📝</span>
+            <span>REMARQUES — PRÉNOM</span>
+          </div>
+          ${rowsHtml}
+          ${all.length > 5 ? `<div class="more">+ ${all.length - 5} autre(s) — double-clic pour tout voir</div>` : (all.length ? `<div class="more">double-clic : détail complet</div>` : '')}
+        </div>
+      `;
+    ]]]
+styles:
+  card:
+    - background: linear-gradient(180deg,rgba(4,16,40,0.97),rgba(4,15,34,0.98))
+    - border: 1px solid rgba(70,190,255,0.18)
+    - border-radius: 12px
+    - box-shadow: 0 0 14px rgba(79,211,255,0.08)
+    - padding: 0px
+  grid:
+    - grid-template-areas: '"card_content"'
+    - grid-template-columns: 1fr
+    - grid-template-rows: auto
+  custom_fields:
+    card_content:
+      - width: 100%
+      - padding: 0px
