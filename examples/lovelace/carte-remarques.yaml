@@ -32,7 +32,7 @@ double_tap_action:
           {% for x in r %}
           {% set ico = '🔴' if x.type == 'DISCIPLINARY' else '🟡' %}
           {% set d = x.date.split('-') %}
-          | {{ ico }} | {{ d[2] }}/{{ d[1] }}/{{ d[0][2:] }} {{ x.heure or '' }} | **{{ x.texte }}**<br>{{ x.auteur }} · {{ x.classe }}{{ ' · 👁️ vue' if x.vue_par_parents else ' · ⚠️ non vue' }} |
+          | {{ ico }} | {{ d[2] }}/{{ d[1] }}/{{ d[0][2:] }} {{ x.heure or '' }} | **{{ x.texte }}**<br>{{ x.auteur }} · {{ x.classe }}{{ ' · ✅ vue' if x.vue_par_parents else ' · ❌ non vue' }} |
           {% endfor %}
         card_mod:
           style: |
@@ -60,14 +60,16 @@ custom_fields:
       const rowsHtml = remarques.length
         ? remarques.map(r => {
             const [y, m, d] = (r.date || '').split('-');
+            const mois = ['JAN','FÉV','MAR','AVR','MAI','JUN','JUL','AOÛ','SEP','OCT','NOV','DÉC'][parseInt(m, 10) - 1] || '';
+            const jour = ['DIM','LUN','MAR','MER','JEU','VEN','SAM'][new Date(r.date + 'T12:00:00').getDay()] || '';
             const grave = r.type === 'DISCIPLINARY';
             const col = grave ? '#ff3b5c' : '#ff9030';
             return `
               <div class="rem-row">
-                <div class="rem-date" style="color:${col};border-color:${col}">${d && m ? d + '/' + m : ''}<span class="rem-year">/${y ? y.slice(2) : ''}</span></div>
+                <div class="rem-date" style="color:${col};border-color:${col}"><span class="rem-jour">${jour}</span><span class="rem-num">${d || ''}</span><span class="rem-mois">${mois} ${y ? y.slice(2) : ''}</span></div>
                 <div class="rem-info">
-                  <div class="rem-text">${r.texte || ''}</div>
-                  <div class="rem-meta">${r.heure || ''} · ${r.auteur || ''}${r.classe ? ' · ' + r.classe : ''} · ${r.vue_par_parents ? '👁️ vue' : '⚠️ non vue'}</div>
+                  <div class="rem-text">${r.texte || ''}<span class="rem-vu ${r.vue_par_parents ? 'ok' : 'ko'}" title="${r.vue_par_parents ? 'Vue par les parents' : 'Non vue par les parents'}">${r.vue_par_parents ? '✔' : '!'}</span></div>
+                  <div class="rem-meta">${r.heure || ''} · ${r.auteur || ''}${r.classe ? ' · ' + r.classe : ''}</div>
                 </div>
               </div>`;
           }).join('')
@@ -96,7 +98,7 @@ custom_fields:
           .nexus-cabanga .icon-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; }
           .nexus-cabanga .rem-row {
             display: grid;
-            grid-template-columns: 56px 1fr;
+            grid-template-columns: 62px 1fr;
             align-items: center;
             column-gap: 12px;
             padding: 6px 0;
@@ -105,20 +107,48 @@ custom_fields:
           .nexus-cabanga .rem-row:last-child { border-bottom: none; }
           .nexus-cabanga .rem-date {
             font-family: 'Orbitron', sans-serif;
-            font-size: 13px;
-            font-weight: 700;
             border: 1px solid;
-            border-radius: 6px;
-            padding: 3px 0;
+            border-radius: 8px;
+            padding: 4px 0 5px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.1;
+            background: rgba(255,255,255,0.03);
           }
-          .nexus-cabanga .rem-year { font-size: 9px; opacity: 0.6; font-weight: 400; }
+          .nexus-cabanga .rem-jour { font-size: 8px; letter-spacing: 1.5px; opacity: 0.7; font-weight: 400; }
+          .nexus-cabanga .rem-num { font-size: 20px; font-weight: 700; margin: 1px 0; }
+          .nexus-cabanga .rem-mois { font-size: 8.5px; letter-spacing: 1px; opacity: 0.75; font-weight: 400; }
           .nexus-cabanga .rem-info { min-width: 0; }
           .nexus-cabanga .rem-text {
             font-size: 12.5px;
             color: #eaf6ff;
             white-space: normal;
             word-wrap: break-word;
+          }
+          .nexus-cabanga .rem-vu {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            margin-left: 8px;
+            border-radius: 50%;
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1;
+            vertical-align: middle;
+          }
+          .nexus-cabanga .rem-vu.ok {
+            color: #04101f;
+            background: #00e676;
+            box-shadow: 0 0 10px rgba(0,230,118,0.7);
+          }
+          .nexus-cabanga .rem-vu.ko {
+            color: #04101f;
+            background: #ff3b5c;
+            box-shadow: 0 0 10px rgba(255,59,92,0.7);
           }
           .nexus-cabanga .rem-meta {
             font-size: 10.5px;
